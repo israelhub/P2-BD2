@@ -1,6 +1,6 @@
 ## 📋 Documentação Completa
 
-**📚 [Leia a documentação completa em DOCUMENTATION.md](./DOCUMENTATION.md)**
+**📚 [Leia a documentação completa em DOCUMENTATION.md](./docs/DOCUMENTATION.md)**
 
 A documentação detalha:
 - ✅ Análise comparativa entre arquivo original e estrutura normalizada
