@@ -1,0 +1,32 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: bd
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./scripts/ddl.sql:/docker-entrypoint-initdb.d/ddl.sql
+
+  api:
+    build: .
+    container_name: api
+    depends_on:
+      - postgres
+    environment:
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - .:/app
+    ports:
+      - "3030:3030"
+
+volumes:
+  pgdata:
