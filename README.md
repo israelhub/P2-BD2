@@ -8,6 +8,29 @@ A documentação detalha:
 - ✅ Estratégia completa de indexação com impactos de performance
 - ✅ Migração para pgloader com configuração otimizada
 
+## 📦 Git LFS
+
+Este projeto utiliza Git Large File Storage (LFS) para gerenciar arquivos grandes. Os seguintes arquivos são rastreados com Git LFS:
+- `data/games.csv` (207.36 MB)
+- `output/games.csv` (98.48 MB)
+- `output/media.csv` (91.73 MB)
+
+### Configurando Git LFS
+
+Se você não tem o Git LFS instalado, [instale-o primeiro](https://git-lfs.github.com/).
+
+```bash
+# Instale o Git LFS
+git lfs install
+
+# Clone o repositório
+git clone <URL_DO_REPOSITORIO>
+cd steam-data
+
+# Verifique se os arquivos LFS foram baixados corretamente
+git lfs ls-files
+```
+
 ## 🚀 Como usar a API
 
 ### 1. Clonar o repositório
