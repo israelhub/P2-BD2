@@ -152,7 +152,7 @@ CREATE TABLE game_supported_languages (
 );
 
 
--- ÍNDICES PARA TABELAS PRINCIPAIS
+-- ÍNDICES PARA AS TABELAS PRINCIPAIS
 
 -- Índices para busca por nome (muito comum em consultas)
 CREATE INDEX idx_categories_name ON categories(name);
@@ -162,7 +162,7 @@ CREATE INDEX idx_genres_name ON genres(name);
 CREATE INDEX idx_tags_name ON tags(name);
 CREATE INDEX idx_languages_name ON languages(name);
 
--- ÍNDICES PARA TABELA GAMES
+-- ÍNDICES PARA AS TABELA GAMES
 
 -- Busca por nome do jogo (consulta muito frequente)
 CREATE INDEX idx_games_name ON games(name);
@@ -197,7 +197,7 @@ CREATE INDEX idx_games_reviews ON games(positive_reviews, negative_reviews);
 -- Índice para tempo de jogo médio (análises de engajamento)
 CREATE INDEX idx_games_playtime ON games(average_playtime_forever);
 
--- ÍNDICES PARA TABELAS DE RELACIONAMENTO
+-- ÍNDICES PARA AS TABELAS DE RELACIONAMENTO
 
 -- game_developers: busca jogos por desenvolvedor
 CREATE INDEX idx_game_developers_developer ON game_developers(developer_id);
