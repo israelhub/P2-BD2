@@ -13,7 +13,7 @@ DROP DATABASE IF EXISTS steam_games;
 -- Cria o banco
 CREATE DATABASE steam_games;
 
--- Conecta com 
+-- Conecta com o banco
 \c steam_games;
 
 -- TABELAS PRINCIPAIS
@@ -231,3 +231,131 @@ CREATE INDEX idx_media_type ON media(media_type);
 CREATE INDEX idx_media_primary ON media(is_primary);
 CREATE INDEX idx_media_order ON media(game_id, order_index);
 CREATE INDEX idx_media_type_primary ON media(media_type, is_primary);
+
+
+-- VIEWS CRIADAS PARA O BANCO
+
+-- view_genres_triple_axis_analysis: 
+-- Analisa e compara os gêneros dos jogos sob três eixos: 
+-- 1. Volume (quantidade total de jogos no gênero)
+-- 2. Popularidade (média de avaliações positivas)
+-- 3. Engajamento (tempo médio de jogo)
+
+CREATE OR REPLACE VIEW view_genres_triple_axis_analysis AS
+SELECT 
+    gnr.name AS genre_name,
+    
+    -- Quantidade total de jogos vinculados a este gênero
+    COUNT(DISTINCT gm.app_id) AS total_games,
+
+    -- Média de avaliações positivas dos jogos deste gênero
+    ROUND(AVG(gm.positive_reviews), 2) AS avg_positive_reviews,
+
+    -- Tempo médio de jogo (em minutos) para os jogos deste gênero
+    ROUND(AVG(gm.average_playtime_forever), 2) AS avg_playtime_forever
+
+FROM 
+    genres gnr
+JOIN 
+    game_genres gg ON gnr.id = gg.genre_id
+JOIN 
+    games gm ON gm.app_id = gg.game_id
+
+GROUP BY 
+    gnr.name
+
+ORDER BY 
+    avg_positive_reviews DESC,  -- Gêneros mais populares primeiro
+    avg_playtime_forever DESC;  -- Critério secundário: engajamento
+
+
+-- view_trending_games_two_weeks: 
+-- Calcula um "fator de tendência", indicando o quanto o jogo cresceu em engajamento recente.
+-- Esta view identifica jogos em ascensão, comparando o tempo médio jogado
+-- nas últimas duas semanas com o tempo médio jogado ao longo da vida útil do jogo.
+-- Permite identificar jogos que estão se tornando populares agora, mesmo que não sejam grandes sucessos históricos.
+
+CREATE OR REPLACE VIEW view_trending_games_two_weeks AS
+
+SELECT
+    g.app_id,
+    g.name AS game_name,
+    g.release_date,
+    
+    -- Tempo médio total jogado desde o lançamento (em minutos)
+    g.average_playtime_forever,
+    
+    -- Tempo médio jogado nas últimas duas semanas (em minutos)
+    g.average_playtime_two_weeks,
+    
+    -- Cálculo do fator de tendência: 
+    -- quanto representa o tempo das duas semanas em relação ao histórico
+    CASE 
+        WHEN g.average_playtime_forever = 0 THEN NULL  -- evita divisão por zero
+        ELSE ROUND((g.average_playtime_two_weeks::DECIMAL / g.average_playtime_forever) * 100, 2)
+    END AS trend_factor_percent
+
+FROM 
+    games g
+
+WHERE 
+    -- Considera apenas jogos que tiveram ao menos algum tempo jogado recentemente
+    g.average_playtime_two_weeks > 0 AND
+    -- E que possuem histórico suficiente para comparação
+    g.average_playtime_forever > 0
+
+ORDER BY 
+    trend_factor_percent DESC,           -- Os mais "em alta" primeiro
+    g.average_playtime_two_weeks DESC;   -- Critério secundário: tempo recente absoluto
+
+
+-- view_top_n_tags_per_genre: 
+-- Esta view identifica as 3 tags mais associadas a cada gênero, com base na quantidade de vezes que uma tag aparece em jogos daquele gênero.
+-- Permite visualizar as tags dominantes por gênero, ou seja, o que o público mais associa a cada tipo de jogo.
+-- Serve como base para recomendações e categorização de jogos.
+
+CREATE OR REPLACE VIEW view_top_n_tags_per_genre AS
+
+WITH tag_counts_per_genre AS (
+    SELECT 
+        gnr.name AS genre_name,
+        tg.name AS tag_name,
+        COUNT(*) AS tag_occurrence,
+        
+        -- Gera numeração para cada tag dentro do seu respectivo gênero
+        ROW_NUMBER() OVER (
+            PARTITION BY gnr.name
+            ORDER BY COUNT(*) DESC
+        ) AS rank_within_genre
+
+    FROM 
+        game_genres gg
+    JOIN 
+        genres gnr ON gg.genre_id = gnr.id
+    JOIN 
+        games gm ON gg.game_id = gm.app_id
+    JOIN 
+        game_tags gt ON gm.app_id = gt.game_id
+    JOIN 
+        tags tg ON gt.tag_id = tg.id
+
+    GROUP BY 
+        gnr.name, tg.name
+)
+
+SELECT 
+    genre_name,
+    tag_name,
+    tag_occurrence,
+    rank_within_genre
+
+FROM 
+    tag_counts_per_genre
+
+-- Apenas as 3 principais tags por gênero
+WHERE 
+    rank_within_genre <= 3
+
+ORDER BY 
+    genre_name,
+    rank_within_genre;
