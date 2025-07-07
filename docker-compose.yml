@@ -1,32 +1,106 @@
 services:
+
+  # PostgreSQL service
   postgres:
-    image: postgres:15
-    container_name: bd
+    depends_on:
+      backup:
+        condition: service_started
+    build:
+      context: ./postgres
+    container_name: postgres
+    hostname: postgres
     environment:
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      PGBACKREST_REMOTE_HOST: ${PGBACKREST_REMOTE_HOST}
+      PGBACKREST_REMOTE_USER: ${PGBACKREST_REMOTE_USER}
     ports:
       - "5433:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
+      - "2221:22"
+    volumes: 
       - ./scripts/ddl.sql:/docker-entrypoint-initdb.d/ddl.sql
+      - ./postgres/data:/var/lib/postgresql/data:rw
+      - ./postgres/log:/var/lib/postgresql/log:rw
+      - shared-ssh:/var/lib/postgresql/.ssh:rw
+    networks:
+      rede:
+        ipv4_address: 110.0.0.111
+    extra_hosts:
+      backup: 110.0.0.112
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
+  # BACKUP service using pgBackRest
+  backup:
+    build:
+      context: ./backup
+    container_name: backup
+    hostname: backup
+    environment:
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+    ports:
+      - "2222:22"
+    volumes:
+      - ./backup/data:/var/lib/pgbackrest:rw
+      - ./backup/log:/var/log/pgbackrest:rw
+      - shared-ssh:/var/lib/postgresql/.ssh:rw
+    networks:
+      rede:
+        ipv4_address: 110.0.0.112
+    extra_hosts:
+      maquina1: 110.0.0.111
+    healthcheck:
+      test: ["CMD", "pgrep", "sshd"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # PGLOADER API service
   api:
     build: .
     container_name: api
+    hostname: api
     depends_on:
       - postgres
     environment:
-      - DB_HOST=${DB_HOST}
-      - DB_PORT=${DB_PORT}
-      - DB_NAME=${DB_NAME}
-      - DB_USER=${DB_USER}
-      - DB_PASSWORD=${DB_PASSWORD}
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
-      - .:/app
+      - .:/app 
     ports:
       - "3030:3030"
+    networks:
+      rede:
+        ipv4_address: 110.0.0.113
+
+networks:
+  rede:
+    name: rede
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 110.0.0.0/24
 
 volumes:
   pgdata:
+  shared-ssh:
+    driver: local
+  postgres-ssh:
+    driver: local
+  backup-ssh:
+    name: backup-ssh
+    driver: local
+  prometheus-data:
+    name: prometheus-data
+    driver: local
