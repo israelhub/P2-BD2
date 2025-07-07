@@ -1,12 +1,11 @@
-## 📋 Documentação Completa
+# Projeto P2 - Banco de Dados 2: Steam Data
 
-**📚 [Leia a documentação completa em DOCUMENTATION.md](./docs/DOCUMENTATION.md)**
+Este projeto tem como objetivo implementar um ambiente PostgreSQL robusto para realizar a migração de dados de uma base monolítica do Steam para um banco de dados PostgreSQL normalizado, otimizado e programável. Além disso, o projeto contempla a criação de uma estrutura completa com:
 
-A documentação detalha:
-- ✅ Análise comparativa entre arquivo original e estrutura normalizada
-- ✅ Justificativas técnicas para cada melhoria implementada
-- ✅ Estratégia completa de indexação com impactos de performance
-- ✅ Migração para pgloader com configuração otimizada
+ • Backup gerenciado com pgBackRest;
+ • Monitoramento contínuo por meio do Prometheus e Grafana;
+ • Ambiente de Data Warehouse;
+ • Processos de ETL orquestrados com Apache Airflow.
 
 ## 📦 Git LFS
 
@@ -49,7 +48,34 @@ Crie um arquivo `.env` com as variaveis necessárias no .env.example:
 cp .env.example .env
 ```
 
-### 4. Subir os serviços
+### 4. Subir os serviços de banco de dados e backup
 ```bash
-docker compose up -d
+docker compose up -d postgres backup
 ```
+
+### 5. Subir o serviço da API para migrar os dados para o banco de dados
+```bash
+docker compose up -d api
+```
+
+# 📄 Documentação
+
+**📚 [Leia a documentação de modelagem e indexação em DOCUMENTATION.md](./docs/DOCUMENTATION.md)**
+
+A documentação detalha:
+- ✅ Análise comparativa entre arquivo original e estrutura normalizada
+- ✅ Justificativas técnicas para cada melhoria implementada
+- ✅ Estratégia completa de indexação com impactos de performance
+- ✅ Migração para pgloader com configuração otimizada
+
+**📚 [Leia a documentação dos comandos de backup em BACKUP_COMMANDS.md](./docs/BACKUP_COMMANDS.md)**
+
+A documentação de backup inclui:
+- ✅ Comandos para criação, restauração e manutenção de backups com pgBackRest
+- ✅ Estratégias de monitoramento e logs
+
+**📚 [Leia o dicionário de dados em DICIONARIO_DE_DADOS.md](./docs/DICIONARIO_DE_DADOS.md)**
+
+O dicionário de dados contém:
+- ✅ Estrutura detalhada do banco de dados normalizado
+- ✅ Descrições de tabelas, colunas e relacionamentos
