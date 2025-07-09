@@ -359,3 +359,261 @@ WHERE
 ORDER BY 
     genre_name,
     rank_within_genre;
+
+
+-- FUNCTIONS CRIADAS PARA O BANCO
+
+-- fn_classificar_categoria_por_engajamento():
+-- A função classifica cada categoria de jogo com base no nível de engajamento médio dos usuários, 
+-- medido pelo tempo médio de jogo (average_playtime_forever) dos jogos associados a ela.
+-- Ela retorna uma classificação textual de engajamento por categoria base em percentis (33% e 66%):
+-- Baixa: tempo abaixo do 33º percentil;
+-- Média: entre os percentis 33% e 66%;
+-- Alta: acima do 66º percentil.
+
+CREATE OR REPLACE FUNCTION fn_classificar_categoria_por_engajamento()
+RETURNS TABLE (
+    categoria_id INT,
+    categoria_nome TEXT,
+    tempo_medio_jogado NUMERIC,
+    classificacao_engajamento TEXT
+) AS
+$$
+DECLARE
+    p33 NUMERIC;
+    p66 NUMERIC;
+    rec RECORD;
+BEGIN
+    SELECT 
+        PERCENTILE_CONT(0.33) WITHIN GROUP (ORDER BY avg_playtime),
+        PERCENTILE_CONT(0.66) WITHIN GROUP (ORDER BY avg_playtime)
+    INTO p33, p66
+    FROM (
+        SELECT 
+            gc.category_id,
+            AVG(g.average_playtime_forever) AS avg_playtime
+        FROM 
+            game_categories gc
+        JOIN 
+            games g ON g.app_id = gc.game_id
+        GROUP BY 
+            gc.category_id
+    ) sub;
+
+    -- Loop por categoria e calcular classificação
+    FOR rec IN
+        SELECT 
+            c.id AS categoria_id,
+            c.name AS categoria_nome,
+            AVG(g.average_playtime_forever) AS tempo_medio_jogado
+        FROM 
+            game_categories gc
+        JOIN 
+            games g ON g.app_id = gc.game_id
+        JOIN 
+            categories c ON c.id = gc.category_id
+        GROUP BY 
+            c.id, c.name
+    LOOP
+        classificacao_engajamento := CASE 
+            WHEN rec.tempo_medio_jogado < p33 THEN 'Baixa'
+            WHEN rec.tempo_medio_jogado < p66 THEN 'Média'
+            ELSE 'Alta'
+        END;
+
+        categoria_id := rec.categoria_id;
+        categoria_nome := rec.categoria_nome;
+        tempo_medio_jogado := rec.tempo_medio_jogado;
+
+        RETURN NEXT;
+    END LOOP;
+END;
+$$ LANGUAGE plpgsql;
+
+-- fn_classificar_genero_por_engajamento():
+-- A função tem como objetivo classificar cada gênero de jogo com base no nível de engajamento dos jogadores, 
+-- utilizando como métrica o tempo médio de jogo (average_playtime_forever) associado aos jogos daquele gênero.
+-- Ela divide os gêneros em três categorias:
+-- Baixa: engajamento abaixo do 33º percentil;
+-- Média: entre os percentis 33% e 66%;
+-- Alta: acima do 66º percentil.
+
+CREATE OR REPLACE FUNCTION fn_classificar_genero_por_engajamento()
+RETURNS TABLE (
+    genero_id INT,
+    genero_nome TEXT,
+    tempo_medio_jogado NUMERIC,
+    classificacao_engajamento TEXT
+) AS
+$$
+DECLARE
+    p33 NUMERIC;
+    p66 NUMERIC;
+    rec RECORD;
+BEGIN
+    SELECT 
+        PERCENTILE_CONT(0.33) WITHIN GROUP (ORDER BY avg_playtime),
+        PERCENTILE_CONT(0.66) WITHIN GROUP (ORDER BY avg_playtime)
+    INTO p33, p66
+    FROM (
+        SELECT 
+            gg.genre_id,
+            AVG(g.average_playtime_forever) AS avg_playtime
+        FROM 
+            game_genres gg
+        JOIN 
+            games g ON g.app_id = gg.game_id
+        GROUP BY 
+            gg.genre_id
+    ) sub;
+
+    -- Loop por gênero e calcular classificação
+    FOR rec IN
+        SELECT 
+            gen.id AS genero_id,
+            gen.name AS genero_nome,
+            AVG(g.average_playtime_forever) AS tempo_medio_jogado
+        FROM 
+            game_genres gg
+        JOIN 
+            games g ON g.app_id = gg.game_id
+        JOIN 
+            genres gen ON gen.id = gg.genre_id
+        GROUP BY 
+            gen.id, gen.name
+    LOOP
+        classificacao_engajamento := CASE 
+            WHEN rec.tempo_medio_jogado < p33 THEN 'Baixa'
+            WHEN rec.tempo_medio_jogado < p66 THEN 'Média'
+            ELSE 'Alta'
+        END;
+
+        genero_id := rec.genero_id;
+        genero_nome := rec.genero_nome;
+        tempo_medio_jogado := rec.tempo_medio_jogado;
+
+        RETURN NEXT;
+    END LOOP;
+END;
+$$ LANGUAGE plpgsql;
+
+-- fn_obter_jogos_com_conquistas_relevantes():
+-- A função retorna todos os jogos cujo número de conquistas (achievements_count) está acima da média geral da base de dados.
+-- É voltada para destacar jogos com forte apelo para jogadores completistas, ou seja, aqueles que gostam de colecionar conquistas, 
+-- troféus ou medalhas dentro dos jogos.
+-- Boa para segmentações do tipo: “os mais desafiadores do gênero X”, ou “ranking por conquistas”.
+
+CREATE OR REPLACE FUNCTION fn_obter_jogos_com_conquistas_relevantes()
+RETURNS TABLE (
+    game_id INT,
+    game_name TEXT,
+    achievements_count INT,
+    user_score FLOAT
+) AS
+$$
+DECLARE
+    v_media_conquistas NUMERIC;
+    rec RECORD;
+BEGIN
+    -- Calcula a média geral de conquistas entre os jogos
+    SELECT AVG(g.achievements_count)
+    INTO v_media_conquistas
+    FROM games g
+    WHERE g.achievements_count IS NOT NULL;
+
+    -- Itera sobre os jogos com conquistas acima da média
+    FOR rec IN
+        SELECT 
+            g.app_id,
+            g.name,
+            g.achievements_count,
+            g.user_score
+        FROM 
+            games g
+        WHERE 
+            g.achievements_count IS NOT NULL
+            AND g.achievements_count > v_media_conquistas
+        ORDER BY 
+            g.achievements_count DESC
+    LOOP
+        -- Atribui valores para o retorno da função
+        game_id := rec.app_id;
+        game_name := rec.name;
+        achievements_count := rec.achievements_count;
+        user_score := rec.user_score;
+
+        RETURN NEXT;
+    END LOOP;
+END;
+$$ LANGUAGE plpgsql;
+
+-- fn_obter_jogo_mais_popular_por_categoria()
+-- Essa função retorna, para cada categoria de jogo, o jogo mais popular 
+-- com base no número mínimo estimado de proprietários (estimated_owners_min).
+-- Útil para exibir "Top Jogos por Categoria" com base em popularidade real estimada.
+
+CREATE OR REPLACE FUNCTION fn_obter_jogo_mais_popular_por_categoria()
+RETURNS TABLE (
+    category_id INT,
+    category_name TEXT,
+    game_id INT,
+    game_name TEXT,
+    estimated_owners_min INT,
+    estimated_owners_max INT,
+    recommendations INT
+) AS
+$$
+DECLARE
+    rec RECORD;
+BEGIN
+    /*
+    Essa função busca, para cada categoria, o jogo mais popular baseado
+    no número estimado mínimo de proprietários (estimated_owners_min).
+    Caso haja empate, pode-se considerar o número de recomendações como critério secundário.
+    */
+    
+    FOR rec IN
+        SELECT 
+            c.id AS category_id,
+            c.name AS category_name,
+            g.app_id AS game_id,
+            g.name AS game_name,
+            g.estimated_owners_min,
+            g.estimated_owners_max,
+            g.recommendations
+        FROM 
+            categories c
+        JOIN LATERAL (
+            SELECT 
+                g_inner.app_id,
+                g_inner.name,
+                g_inner.estimated_owners_min,
+                g_inner.estimated_owners_max,
+                g_inner.recommendations
+            FROM 
+                game_categories gc
+            JOIN games g_inner ON g_inner.app_id = gc.game_id
+            WHERE 
+                gc.category_id = c.id
+                AND g_inner.estimated_owners_min IS NOT NULL
+            ORDER BY 
+                g_inner.estimated_owners_min DESC,
+                g_inner.recommendations DESC NULLS LAST
+            LIMIT 1
+        ) AS g ON TRUE
+        ORDER BY c.name
+    LOOP
+        -- Atribui valores para retorno da função
+        category_id := rec.category_id;
+        category_name := rec.category_name;
+        game_id := rec.game_id;
+        game_name := rec.game_name;
+        estimated_owners_min := rec.estimated_owners_min;
+        estimated_owners_max := rec.estimated_owners_max;
+        recommendations := rec.recommendations;
+
+        -- Retorna cada registro
+        RETURN NEXT;
+    END LOOP;
+END;
+$$ LANGUAGE plpgsql;
