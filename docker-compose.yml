@@ -82,6 +82,70 @@ services:
     networks:
       rede:
         ipv4_address: 110.0.0.113
+        
+# Prometheus
+  prometheus:
+    depends_on:
+      postgresql-exporter:
+        condition: service_started
+    image: prom/prometheus
+    mem_limit: 512m
+    cpus: 0.5
+    container_name: prometheus
+    hostname: prometheus
+    volumes:
+        - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+        - prometheus-data:/prometheus
+    command:
+        - '--config.file=/etc/prometheus/prometheus.yml'
+        - '--storage.tsdb.wal-compression'
+        - '--storage.tsdb.retention.time=30d'
+        # - '--storage.tsdb.path=/prometheus'
+        # - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+        # - '--web.console.templates=/usr/share/prometheus/consoles'
+    ports:
+        - "9090:9090"
+    networks:
+      rede:
+        ipv4_address: 110.0.0.114
+
+  postgresql-exporter:
+    depends_on:
+      postgres:
+        condition: service_healthy
+    image: prometheuscommunity/postgres-exporter
+    container_name: postgresql-exporter
+    hostname: postgresql-exporter
+    ports:
+        - "9187:9187"
+    environment:
+        DATA_SOURCE_NAME: "postgresql://postgres:postgres@postgres:5432/steam_games?sslmode=disable"
+    networks:
+      rede:
+        ipv4_address: 110.0.0.115
+
+  # Grafana
+  grafana:
+    depends_on:
+      prometheus:
+        condition: service_started
+    image: grafana/grafana
+    container_name: grafana
+    hostname: grafana
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:rw
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:rw
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:rw
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: senha
+      GF_USERS_ALLOW_SIGN_UP: false
+    ports:
+        - "4000:3000"
+    networks:
+      rede:
+        ipv4_address: 110.0.0.116
 
 networks:
   rede:
@@ -103,4 +167,7 @@ volumes:
     driver: local
   prometheus-data:
     name: prometheus-data
+    driver: local
+  grafana-data:
+    name: grafana-data
     driver: local
