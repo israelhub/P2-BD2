@@ -119,7 +119,7 @@ services:
     ports:
         - "9187:9187"
     environment:
-        DATA_SOURCE_NAME: "postgresql://postgres:postgres@postgres:5432/steam_games?sslmode=disable"
+        DATA_SOURCE_NAME: postgresql://postgres:steampassword@postgres:5432/steam_games?sslmode=disable
     networks:
       rede:
         ipv4_address: 110.0.0.115
