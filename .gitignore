@@ -66,3 +66,47 @@ $RECYCLE.BIN/
 *.sql.gz
 *.dump
 backup.sql
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Airflow específico
+airflow/logs/
+airflow/config/webserver_config.py
+
+# DBT específico
+dbt/dbt_packages/
+dbt/target/
+dbt/logs/
+dbt/package-lock.yml
+
+# Data Warehouse específico
+dw/data/
+dw/log/
+postgres/data/
+postgres/log/
+backup/data/
+backup/log/
