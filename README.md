@@ -1,11 +1,12 @@
 # Projeto P2 - Banco de Dados 2: Steam Data
 
-Este projeto tem como objetivo implementar um ambiente PostgreSQL robusto para realizar a migração de dados de uma base monolítica do Steam para um banco de dados PostgreSQL normalizado, otimizado e programável. Além disso, o projeto contempla a criação de uma estrutura completa com:
+Este projeto tem como objetivo implementar um ambiente PostgreSQL para realizar a migração de dados de uma base monolítica do Steam para um banco de dados PostgreSQL normalizado, otimizado e programável. Além disso, o projeto contempla a criação de uma estrutura completa com:
 
  • Backup gerenciado com pgBackRest;
  • Monitoramento contínuo por meio do Prometheus e Grafana;
  • Ambiente de Data Warehouse;
- • Processos de ETL orquestrados com Apache Airflow.
+ • Processos de ELT orquestrados com Apache Airflow;
+ • Visualização de dados com Apache Superset.
 
 ## 📦 Git LFS
 
@@ -30,7 +31,7 @@ cd steam-data
 git lfs ls-files
 ```
 
-## 🚀 Como usar a API
+## 🚀 Como usar o Ambiente
 
 ### 1. Clonar o repositório
 ```bash
@@ -48,19 +49,14 @@ Crie um arquivo `.env` com as variaveis necessárias no .env.example:
 cp .env.example .env
 ```
 
-### 4. Subir os serviços de banco de dados e backup
+### 4. Subir os serviços do docker com Docker Compose
 ```bash
-docker compose up -d postgres backup
-```
-
-### 5. Subir o serviço da API para migrar os dados para o banco de dados
-```bash
-docker compose up -d api
+docker compose up -d 
 ```
 
 # 📄 Documentação
 
-**📚 [Leia a documentação de modelagem e indexação em DOCUMENTATION.md](./docs/DOCUMENTATION.md)**
+**📚 [Leia a documentação de modelagem e indexação em DOCUMENTATION.md](./docs/MODELAGEM.md)**
 
 A documentação detalha:
 - ✅ Análise comparativa entre arquivo original e estrutura normalizada
@@ -68,7 +64,7 @@ A documentação detalha:
 - ✅ Estratégia completa de indexação com impactos de performance
 - ✅ Migração para pgloader com configuração otimizada
 
-**📚 [Leia a documentação dos comandos de backup em BACKUP_COMMANDS.md](./docs/BACKUP_COMMANDS.md)**
+**📚 [Leia a documentação dos comandos de backup em BACKUP_COMMANDS.md](./docs/COMANDOS_BACKUP.md)**
 
 A documentação de backup inclui:
 - ✅ Comandos para criação, restauração e manutenção de backups com pgBackRest
@@ -79,3 +75,10 @@ A documentação de backup inclui:
 O dicionário de dados contém:
 - ✅ Estrutura detalhada do banco de dados normalizado
 - ✅ Descrições de tabelas, colunas e relacionamentos
+
+**📚 [Veja exemplo de gráficos criados com Apache Superset](./superset/README.md)**
+
+O Readme do Superset inclui:
+- ✅ Exemplo de consultas SQL para visualização de dados
+- ✅ Passo a passo para iniciar o Apache Superset
+- ✅ Captura do Dashboard de visualização de dados criado para análise do Data Warehouse

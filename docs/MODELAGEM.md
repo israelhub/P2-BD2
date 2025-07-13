@@ -1,6 +1,4 @@
-# Steam Games Database - Documentação de Modelagem e Indexação
-
-## 📋 Sumário Executivo
+# Steam Games Database - Documentação de Modelagem (Normalização, Indexação, Programação)
 
 Este documento detalha as melhorias de modelagem de dados implementadas no Steam Games Database, transformando um arquivo CSV monolítico em um banco de dados relacional normalizado.
 
