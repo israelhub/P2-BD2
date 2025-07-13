@@ -472,7 +472,39 @@ services:
         - "4000:3000"
     networks:
       rede:
-        ipv4_address: 110.0.0.116
+        ipv4_address: 110.0.0.126
+
+  # Apache Superset
+  superset:
+    build:
+      context: ./superset
+    container_name: superset
+    hostname: superset
+    restart: always
+    depends_on:
+      postgres-dw:
+        condition: service_healthy
+    ports:
+      - "8088:8088"
+    volumes:
+      - ./superset/docker-init.sh:/app/docker/docker-init.sh:ro
+      - superset-data:/app/superset_home
+    environment:
+      SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY}
+      SUPERSET_ADMIN_USER: ${SUPERSET_ADMIN_USER}
+      SUPERSET_ADMIN_PASSWORD: ${SUPERSET_ADMIN_PASSWORD}
+      SUPERSET_ADMIN_EMAIL: ${SUPERSET_ADMIN_EMAIL}
+      SQLALCHEMY_DATABASE_URI: postgresql://${POSTGRES_DW_USER}:${POSTGRES_DW_PASSWORD}@postgres-dw:5432/${POSTGRES_DW_DB}
+    command: ["/app/docker/docker-init.sh"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8088/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      rede:
+        ipv4_address: 110.0.0.127
 
 networks:
   rede:
@@ -499,4 +531,7 @@ volumes:
     driver: local
   grafana-data:
     name: grafana-data
+    driver: local
+  superset-data:
+    name: superset-data
     driver: local
