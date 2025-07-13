@@ -718,3 +718,130 @@ AFTER DELETE ON games
 FOR EACH ROW
 EXECUTE FUNCTION fn_remover_associacoes_orfas();
 
+-- PROCEDURES CRIADAS PARA O BANCO
+
+-- pr_rever_classificacao_etaria_por_tags():
+-- Esta procedure percorre todos os jogos que possuem tags sensíveis e ajusta
+-- a classificação etária mínima (required_age) de acordo com o conteúdo.
+-- A lógica abaixo usa os seguintes critérios:
+-- - "Nudity", "Sexual Content"     => 18 anos
+-- - "Violence", "Gore"             => mínimo 16 anos
+
+CREATE OR REPLACE PROCEDURE pr_rever_classificacao_etaria_por_tags()
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    rec RECORD;
+BEGIN
+    FOR rec IN
+        SELECT 
+            g.app_id,
+            MAX(
+                CASE 
+                    WHEN t.name IN ('Nudity', 'Sexual Content') THEN 18
+                    WHEN t.name IN ('Violence', 'Gore') THEN 16
+                    ELSE g.required_age
+                END
+            ) AS nova_idade
+        FROM 
+            games g
+        JOIN 
+            game_tags gt ON gt.game_id = g.app_id
+        JOIN 
+            tags t ON t.id = gt.tag_id
+        GROUP BY 
+            g.app_id
+    LOOP
+        -- Atualiza somente se a nova idade for maior que a atual
+        UPDATE games
+        SET required_age = rec.nova_idade
+        WHERE app_id = rec.app_id
+          AND required_age IS DISTINCT FROM rec.nova_idade;
+
+        RAISE NOTICE 'Atualizado jogo % para idade mínima de % anos.', rec.app_id, rec.nova_idade;
+    END LOOP;
+END;
+$$;
+
+-- pr_corrigir_associacoes_com_linguas_invalidas():
+-- Esta procedure remove associações inválidas na tabela game_supported_languages,
+-- ou seja, aquelas que referenciam um language_id que não existe na tabela languages.
+-- Ela garante que todas as associações de idiomas estejam corretas e consistentes,
+-- evitando problemas de integridade referencial.
+
+CREATE OR REPLACE PROCEDURE pr_corrigir_associacoes_com_linguas_invalidas()
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    linhas_afetadas INT;
+BEGIN
+    DELETE FROM game_supported_languages gsl
+    WHERE NOT EXISTS (
+        SELECT 1
+        FROM languages l
+        WHERE l.id = gsl.language_id
+    )
+    RETURNING *;
+
+    GET DIAGNOSTICS linhas_afetadas = ROW_COUNT;
+    RAISE NOTICE 'Linhas removidas com language_id inválido: %', linhas_afetadas;
+END;
+$$;
+
+-- pr_normalizar_urls_quebradas():
+-- Esta procedure percorre todos os jogos e normaliza as URLs quebradas.
+-- Ela verifica se as URLs de website, suporte e imagem de cabeçalho estão no formato correto.
+-- Isso garante que as URLs estejam sempre acessíveis e no formato adequado.
+-- Se a URL não começa com "http://" ou "https://", ela é corrigida para incluir "https://".
+-- A procedure atualiza as URLs somente quando houver alguma mudança detectada,
+-- evitando atualizações desnecessárias no banco de dados.
+
+CREATE OR REPLACE PROCEDURE pr_normalizar_urls_quebradas()
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    jogo RECORD;
+    nova_website TEXT;
+    nova_support TEXT;
+    nova_header TEXT;
+BEGIN
+    FOR jogo IN SELECT app_id, website_url, support_url, header_image_url FROM games LOOP
+        -- Normalizar website_url
+        nova_website := CASE 
+            WHEN website_url IS NOT NULL AND website_url ~* '^(www\.)' THEN 'https://' || website_url
+            WHEN website_url IS NOT NULL AND website_url !~* '^https?://' THEN 'https://' || website_url
+            ELSE website_url
+        END;
+
+        -- Normalizar support_url
+        nova_support := CASE 
+            WHEN support_url IS NOT NULL AND support_url ~* '^(www\.)' THEN 'https://' || support_url
+            WHEN support_url IS NOT NULL AND support_url !~* '^https?://' THEN 'https://' || support_url
+            ELSE support_url
+        END;
+
+        -- Normalizar header_image_url
+        nova_header := CASE 
+            WHEN header_image_url IS NOT NULL AND header_image_url ~* '^(www\.)' THEN 'https://' || header_image_url
+            WHEN header_image_url IS NOT NULL AND header_image_url !~* '^https?://' THEN 'https://' || header_image_url
+            ELSE header_image_url
+        END;
+
+        -- Atualiza quando alguma mudança é detectada
+        IF nova_website IS DISTINCT FROM jogo.website_url 
+           OR nova_support IS DISTINCT FROM jogo.support_url 
+           OR nova_header IS DISTINCT FROM jogo.header_image_url THEN
+
+            UPDATE games
+            SET 
+                website_url = nova_website,
+                support_url = nova_support,
+                header_image_url = nova_header
+            WHERE app_id = jogo.app_id;
+
+        END IF;
+    END LOOP;
+
+    RAISE NOTICE 'URLs corrigidas.';
+END;
+$$;
