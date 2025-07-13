@@ -17,6 +17,13 @@ yarn.lock
 docker-compose.override.yml
 .docker/
 
+# Diretórios de dados que são específicos da máquina
+pgbadger/outdir/
+grafana/data/
+
+# Arquivos temporários do Docker
+*.tmp
+
 # Logs
 logs/
 *.log
