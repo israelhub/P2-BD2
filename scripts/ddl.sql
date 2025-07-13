@@ -617,3 +617,104 @@ BEGIN
     END LOOP;
 END;
 $$ LANGUAGE plpgsql;
+
+-- TRIGGERS CRIADAS PARA O BANCO
+
+-- trg_validar_midia_principal_unica:
+-- Trigger para garantir que não haja mais de uma mídia principal por jogo e tipo de mídia
+-- Esta trigger é acionada antes de inserir ou atualizar uma mídia.
+-- Ela verifica se já existe outra mídia marcada como principal para o mesmo jogo e tipo de mídia
+-- e, se existir, bloqueia a operação com uma exceção.
+-- Isso garante que cada jogo tenha no máximo uma mídia principal por tipo, evitando conflitos.
+
+CREATE OR REPLACE FUNCTION fn_validar_midia_principal_unica()
+RETURNS TRIGGER AS
+$$
+DECLARE
+    existe_midia BOOLEAN;
+BEGIN
+    -- Verifica se já existe outra mídia marcada como principal para o mesmo game_id e media_type
+    IF NEW.is_primary = TRUE THEN
+        SELECT EXISTS (
+            SELECT 1
+            FROM media
+            WHERE game_id = NEW.game_id
+              AND media_type = NEW.media_type
+              AND is_primary = TRUE
+              -- Garante que não está comparando com a própria mídia em caso de UPDATE
+              AND (NEW.order_index IS NULL OR order_index <> NEW.order_index)
+        ) INTO existe_midia;
+
+        -- Se já existe uma principal, bloqueia
+        IF existe_midia THEN
+            RAISE EXCEPTION 'Já existe uma mídia principal para o jogo % do tipo %', NEW.game_id, NEW.media_type;
+        END IF;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER trg_validar_midia_principal_unica
+BEFORE INSERT OR UPDATE ON media
+FOR EACH ROW
+EXECUTE FUNCTION fn_validar_midia_principal_unica();
+
+-- trg_ajustar_status_para_lancado:
+-- Trigger para ajustar o status do jogo para 'lançado' automaticamente
+-- Esta trigger é acionada após uma atualização na tabela games.
+-- Ela verifica se a data de lançamento do jogo já passou e, se o status atual for 'aguardado',
+-- atualiza o status para 'lançado'.
+-- Isso garante que o status do jogo seja sempre coerente com a data de lançamento,
+-- evitando inconsistências no banco de dados.
+
+CREATE OR REPLACE FUNCTION fn_ajustar_status_para_lancado()
+RETURNS TRIGGER AS
+$$
+BEGIN
+    -- Verifica se a data de lançamento já passou e o status está como 'aguardado'
+    IF NEW.release_date <= CURRENT_DATE AND NEW.game_status = 'aguardado' THEN
+        -- Atualiza o status para 'lançado'
+        UPDATE games
+        SET game_status = 'lançado'
+        WHERE app_id = NEW.app_id;
+    END IF;
+
+    RETURN NULL; -- AFTER trigger que só executa ação colateral
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER trg_ajustar_status_para_lancado
+AFTER UPDATE ON games
+FOR EACH ROW
+EXECUTE FUNCTION fn_ajustar_status_para_lancado();
+
+-- trg_remover_associacoes_orfas:
+-- Trigger para remover associações órfãs após a exclusão de um jogo
+-- Esta trigger é acionada após a exclusão de um jogo na tabela games.
+-- Ela remove todas as associações órfãs relacionadas a esse jogo, como mídias,
+-- categorias, gêneros, desenvolvedores, publicadores, tags e idiomas.
+-- Isso garante que não haja dados órfãos no banco de dados, mantendo a integridade referencial.
+
+CREATE OR REPLACE FUNCTION fn_remover_associacoes_orfas()
+RETURNS TRIGGER AS
+$$
+BEGIN
+    -- Remove as mídias relacionadas
+    DELETE FROM media WHERE game_id = OLD.app_id;
+
+    -- Remove relacionamentos com categorias, gêneros, desenvolvedores, publicadores, tags, idiomas etc.
+    DELETE FROM game_categories WHERE game_id = OLD.app_id;
+    DELETE FROM game_genres WHERE game_id = OLD.app_id;
+    DELETE FROM game_tags WHERE game_id = OLD.app_id;
+    DELETE FROM game_developers WHERE game_id = OLD.app_id;
+    DELETE FROM game_publishers WHERE game_id = OLD.app_id;
+    DELETE FROM game_full_audio_languages WHERE game_id = OLD.app_id;
+    DELETE FROM game_supported_languages WHERE game_id = OLD.app_id;
+
+    RETURN NULL; -- AFTER trigger
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER trg_remover_associacoes_orfas
+AFTER DELETE ON games
+FOR EACH ROW
+EXECUTE FUNCTION fn_remover_associacoes_orfas();
+
