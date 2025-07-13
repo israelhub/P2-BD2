@@ -6,10 +6,6 @@ global:
     environment: Monitoring
 
 scrape_configs:
-  - job_name: 'prometheus'
-    static_configs:
-      - targets: ['postgresql-exporter:9187']
-
   - job_name: 'postgres'
     scrape_interval: 5s
     metrics_path: '/metrics'

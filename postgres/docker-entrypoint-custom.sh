@@ -77,7 +77,13 @@ crontab -u postgres /var/lib/postgresql/crontab-agendar
 -c log_directory='/var/lib/postgresql/log' \
 -c log_filename='postgresql-postgres.log' \
 -c log_statement='all' \
+-c log_line_prefix='%t [%p]: [%l-1] ' \
+-c log_destination='stderr' \
+-c log_min_duration_statement=0 \
+-c log_connections=on \
+-c log_disconnections=on \
 -c archive_mode=on \
+-c shared_preload_libraries='pg_stat_statements' \
 -c archive_command='pgbackrest --stanza=postgres archive-push %p' &
 
 # Garantir permissoes
