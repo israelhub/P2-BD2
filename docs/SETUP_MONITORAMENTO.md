@@ -9,15 +9,30 @@ Este documento explica como configurar completamente o sistema de monitoramento 
 ## 🚀 Setup Automático (Recomendado)
 
 ```bash
-# 1. Subir os containers
+# Apenas um comando! 🎉
 docker-compose up -d
-
-# 2. Executar setup
-chmod +x scripts/setup-monitoring.sh
-./scripts/setup-monitoring.sh
 ```
 
-## 🛠️ Setup Manual (se necessário)
+**O que acontece automaticamente:**
+1. ✅ Todos os containers sobem (PostgreSQL, pgBadger, Prometheus, Grafana)
+2. ✅ PostgreSQL inicia com logging detalhado pré-configurado
+3. ✅ pgBadger processa automaticamente os logs quando disponíveis
+4. ✅ Prometheus e Grafana ficam disponíveis com healthchecks
+5. ✅ Todo o monitoramento funciona imediatamente
+
+**Verificar o status:**
+```bash
+# Ver status de todos os containers
+docker-compose ps
+
+# Verificar logs específicos
+docker logs postgres
+docker logs pgbadger
+docker logs prometheus
+docker logs grafana
+```
+
+## 🛠️ Setup Manual (apenas se necessário)
 
 ### 1. Configurar PostgreSQL
 ```sql
@@ -41,7 +56,7 @@ docker exec pgbadger /usr/bin/pgbadger \
 
 | Ferramenta | URL | Credenciais |
 |------------|-----|-------------|
-| **Grafana** | http://localhost:4000 | admin/admin |
+| **Grafana** | http://localhost:4000 | admin/senha |
 | **Prometheus** | http://localhost:9090 | - |
 | **pgBadger** | http://localhost:5000 | - |
 | **PostgreSQL Exporter** | http://localhost:9187/metrics | - |
