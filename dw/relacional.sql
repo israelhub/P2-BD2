@@ -8,7 +8,7 @@ CREATE SCHEMA IF NOT EXISTS snapshots;
 GRANT ALL ON SCHEMA public_marts TO dw_user;
 GRANT ALL ON SCHEMA public_staging TO dw_user;
 GRANT ALL ON SCHEMA raw TO dw_user;
-GRANT ALL ON SCHEMA snapshot TO dw_user;
+GRANT ALL ON SCHEMA snapshots TO dw_user;
 
 -- DIM_DATE: Dimensão de tempo para análises temporais
 CREATE TABLE IF NOT EXISTS public_marts.dim_date (
