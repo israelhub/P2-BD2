@@ -410,7 +410,7 @@ services:
       rede:
         ipv4_address: 110.0.0.125
         
-# Prometheus
+  # Prometheus
   prometheus:
     depends_on:
       postgresql-exporter:
@@ -506,6 +506,29 @@ services:
       rede:
         ipv4_address: 110.0.0.127
 
+  # PgBadger
+  pgbadger:
+    container_name: pgbadger
+    hostname: pgbadger
+    build:
+      dockerfile: Dockerfile
+      context: ./pgbadger
+      args:
+        - VERSION=12.1 
+    environment:
+      OPTIONS: "--prefix=/var/lib/pgbadger/outdir"
+    volumes:
+      - ./pgbadger/outdir:/var/lib/pgbadger/outdir:rw
+      - ./postgres/log:/var/lib/pgbadger/log:ro
+    ports:
+      - "5000:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      rede:
+        ipv4_address: 110.0.0.128
+
 networks:
   rede:
     name: rede
@@ -534,4 +557,7 @@ volumes:
     driver: local
   superset-data:
     name: superset-data
+    driver: local
+  postgres-logs:
+    name: postgres-logs
     driver: local
